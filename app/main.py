@@ -7,8 +7,10 @@ import psycopg2
 from  psycopg2.extras import RealDictCursor 
 import time
 from . import models
-from .database import engine, sessionLocal
+from .database import engine, get_db
 from sqlalchemy.orm import Session
+
+
 
 
 
@@ -21,12 +23,7 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-def get_db():
-    db = sessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 class Post(BaseModel):
     title: str
@@ -73,7 +70,9 @@ def root():
 
 @app.get('/sqlalchemy')
 def test_posts(db: Session = Depends(get_db)):
-    return {"status" : "success"}
+
+    posts = db.query(models.Post).all()
+    return {"data" : posts}
 
 
 
