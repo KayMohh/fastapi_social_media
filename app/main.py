@@ -1,35 +1,22 @@
 from fastapi import FastAPI, Response, status, HTTPException, Depends
 from fastapi.params import Body
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from random import randrange
+from passlib.context import CryptContext
 import psycopg2
 from  psycopg2.extras import RealDictCursor 
 import time
-from . import models
+from . import models, schemas
 from .database import engine, get_db
 from sqlalchemy.orm import Session
 
 
-
-
-
-
-
-# from psycopg.extras import RealDictCursor
-
-
+pwd_context = CryptContect(schemes=['bcrypt'], deprecated= "auto")
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-
-
-class Post(BaseModel):
-    title: str
-    content: str
-    published : bool = True
-    # rating : Optional[int] = None  
 
 while True:
 
@@ -47,13 +34,6 @@ while True:
         time.sleep(3)
 
 
-my_posts = [
-    {"title" : "first title", "content" : "content 1", "id": 1},
-    {"title" : "secondtitle", "content" : "content 2", "id": 2},
-]
-
-
-
 def find_post(id):
     for p in my_posts:
         if p["id"] == id:
@@ -68,27 +48,18 @@ def find_index_post(id):
 def root():
     return {"message": "Hello World"}
 
-@app.get('/sqlalchemy')
-def test_posts(db: Session = Depends(get_db)):
 
-    posts = db.query(models.Post).all()
-    return {"data" : posts}
-
-
-
-@app.get('/posts')
+@app.get('/posts', response_model= List[schemas.Post])
 def get_posts(db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * FROM posts """)
     # posts = cursor.fetchall()
     # print(posts)
     posts = db.query(models.Post).all()
     
-    return {
-        "data" : posts
-    }
+    return posts
 
-@app.post('/posts', status_code=status.HTTP_201_CREATED)
-def create_posts(post : Post, db: Session = Depends(get_db)):
+@app.post('/posts', status_code=status.HTTP_201_CREATED, response_model= schemas.Post)
+def create_posts(post : schemas.PostCreate, db: Session = Depends(get_db),):
     # cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """,
     
     #  (post.title, post.content, post.published))
@@ -100,20 +71,17 @@ def create_posts(post : Post, db: Session = Depends(get_db)):
     # a simple way of doing this is using the dict unpack method with (**) as below
     # print(post.dict())
     new_post = models.Post(
-        title=post.title, content=post.content, published=post.published,
-        # **post.dict()
+        # title=post.title, content=post.content, published=post.published,
+        **post.dict()
 )
   
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
-    return {
-        "data" : new_post
-    }
-    
+    return new_post
 
 
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model= schemas.Post)
 def get_post(id: int, db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * FROM posts WHERE id = %s """, (str(id),))
     # post = cursor.fetchone()
@@ -123,9 +91,7 @@ def get_post(id: int, db: Session = Depends(get_db)):
     print(post)
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=  f"post with id : {id} was not found" )
-        # response.status_code = status.HTTP_404_NOT_FOUND
-        # return {"message" : f"post with id : {id} was not found"}
-    return {"post_detail" : post}
+    return post
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -142,8 +108,8 @@ def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 
-@app.put("/posts/{id}")
-def update_post(id: int, updated_post: Post, db: Session = Depends(get_db)):
+@app.put("/posts/{id}", response_model= schemas.Post)
+def update_post(id: int, updated_post: schemas.PostCreate, db: Session = Depends(get_db)):
     
     post_query = db.query(models.Post).filter(models.Post.id == id)
 
@@ -157,7 +123,12 @@ def update_post(id: int, updated_post: Post, db: Session = Depends(get_db)):
     db.commit()
 
  
-    return {"data" : post_query.first()}
+    return post_query.first()
 
-    print(post)
-
+@app.post('/users', status_code=status.HTTP_201_CREATED, response_model= schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    new_user = models.User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
