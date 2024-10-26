@@ -2,7 +2,7 @@ from fastapi import FastAPI, Response, status, HTTPException, Depends, APIRouter
 from .. import models, schemas, oauth2
 from sqlalchemy.orm import Session
 from ..database import get_db
-from typing import List
+from typing import List, Optional
 
 router = APIRouter(
     # prefex = "/posts",
@@ -11,11 +11,12 @@ router = APIRouter(
 )
 
 @router.get('/posts', response_model= List[schemas.Post])
-def get_posts(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
-    # cursor.execute("""SELECT * FROM posts """)
-    # posts = cursor.fetchall()
-    # print(posts)
-    posts = db.query(models.Post).all()
+def get_posts(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user), limit: int = 5, skip: int = 0, search: Optional [str] = ""):
+  
+    posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
+    print(limit)
+    print(skip)
+    print(search)
     
     return posts
 
@@ -23,21 +24,11 @@ def get_posts(db: Session = Depends(get_db), current_user: int = Depends(oauth2.
 def get_user_posts(owner_id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     
     posts = db.query(models.Post).filter(models.Post.owner_id == current_user.id ).all()
-    
     return posts
 
 @router.post('/posts', status_code=status.HTTP_201_CREATED, response_model= schemas.Post)
-def create_posts(post : schemas.PostCreate, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user) ):
-    # cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """,
-    
-    #  (post.title, post.content, post.published))
+def create_posts(post : schemas.PostCreate, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
 
-    # new_post = cursor.fetchone()
-    # conn.commit()
-    # print(new_post)
-    
-    # a simple way of doing this is using the dict unpack method with (**) as below
-    # print(post.dict())
     print(current_user.email)
     new_post = models.Post(
         owner_id = current_user.id,
