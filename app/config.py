@@ -17,4 +17,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-print(settings.dict())
+# print(settings.dict())
