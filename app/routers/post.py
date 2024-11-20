@@ -6,49 +6,21 @@ from typing import List, Optional
 from sqlalchemy import func
 
 router = APIRouter(
-    # prefex = "/posts",
     tags = ['Posts']
 
 )
 
 @router.get('/posts', response_model= List[schemas.PostWithVote])
 def get_posts(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user), limit: int = 5, skip: int = 0, search: Optional [str] = ""):
-  
-    # posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
-    # print(limit)
-    # print(skip)
-    # print(search)
     
     posts = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
     # print(results)
     
     return posts
 
-# @router.get('/posts/{owner_id}', response_model= List[schemas.Post])
-# def get_user_posts(owner_id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
-    
-#     posts = db.query(models.Post).filter(models.Post.owner_id == current_user.id ).all()
-#     return posts
-
-# @router.post('/posts', status_code=status.HTTP_201_CREATED, response_model= schemas.Post)
-# def create_posts(post : schemas.PostCreate, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
-
-#     print(current_user.email)
-#     new_post = models.Post(
-#         owner_id = current_user.id,
-#         **post.dict()
-# )
-#     db.add(new_post)
-#     db.commit()
-#     db.refresh(new_post)
-#     return new_post
-
-
 @router.get("/posts/{id}", response_model= schemas.PostWithVote)
 def get_post(id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
-    # cursor.execute("""SELECT * FROM posts WHERE id = %s """, (str(id),))
-    # post = cursor.fetchone()
-    # post = db.query(models.Post).filter(models.Post.id == id).first()
+   
     post = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).filter(models.Post.id == id).first()
 
     if not post:
