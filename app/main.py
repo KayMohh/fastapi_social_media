@@ -16,7 +16,7 @@ app = FastAPI()
 # for testing purpose only, never to be done in production
 origins = ["*"]
 
-app.add.middleware(CORSMiddleware,
+app.add_middleware(CORSMiddleware,
                    allow_origins=origins,
                    allow_credentials=True,
                    allow_methods = ["*"],
